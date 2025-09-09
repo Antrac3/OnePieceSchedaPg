@@ -1,5 +1,7 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { useEffect, useRef, useState } from "react";
 
 export default function CaratteristicheForm({
   value,
@@ -16,6 +18,36 @@ export default function CaratteristicheForm({
   };
   onChange: (v: any) => void;
 }) {
+  // Local debounced state to avoid frequent parent updates that break mobile input focus
+  const [local, setLocal] = useState<any>(value || {});
+  const focusedRef = useRef(false);
+  const flushTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (focusedRef.current) return;
+    setLocal(value || {});
+  }, [value]);
+
+  const scheduleFlush = () => {
+    if (flushTimerRef.current) clearTimeout(flushTimerRef.current as any);
+    flushTimerRef.current = window.setTimeout(() => {
+      try {
+        onChange(local);
+      } catch (e) {
+        // ignore
+      }
+      flushTimerRef.current = null;
+    }, 300);
+  };
+
+  const flushNow = () => {
+    if (flushTimerRef.current) {
+      clearTimeout(flushTimerRef.current as any);
+      flushTimerRef.current = null;
+    }
+    onChange(local);
+  };
+
   // Render each characteristic across three columns: base, bonus/malus and temp
   const Row = ({ label, keyBase }: { label: string; keyBase: keyof typeof value }) => (
     <div className="grid grid-cols-3 gap-2 items-center">
@@ -23,24 +55,30 @@ export default function CaratteristicheForm({
         <Label className="text-sm">{label}</Label>
         <Input
           type="number"
-          value={(value[keyBase] as number) ?? 0}
-          onChange={(e) => onChange({ ...value, [keyBase]: Number(e.target.value) })}
+          value={(local[keyBase] as number) ?? 0}
+          onFocus={() => { focusedRef.current = true; }}
+          onBlur={() => { focusedRef.current = false; flushNow(); }}
+          onChange={(e) => { setLocal((p: any) => ({ ...p, [keyBase]: Number(e.target.value) })); scheduleFlush(); }}
         />
       </div>
       <div>
         <Label className="text-sm">Bonus/Malus</Label>
         <Input
           type="number"
-          value={(value[`${String(keyBase)}_bonus` as any] as number) ?? 0}
-          onChange={(e) => onChange({ ...value, [`${String(keyBase)}_bonus`]: Number(e.target.value) })}
+          value={(local[`${String(keyBase)}_bonus` as any] as number) ?? 0}
+          onFocus={() => { focusedRef.current = true; }}
+          onBlur={() => { focusedRef.current = false; flushNow(); }}
+          onChange={(e) => { setLocal((p: any) => ({ ...p, [`${String(keyBase)}_bonus`]: Number(e.target.value) })); scheduleFlush(); }}
         />
       </div>
       <div>
         <Label className="text-sm">Temp.</Label>
         <Input
           type="number"
-          value={(value[`${String(keyBase)}_temp` as any] as number) ?? 0}
-          onChange={(e) => onChange({ ...value, [`${String(keyBase)}_temp`]: Number(e.target.value) })}
+          value={(local[`${String(keyBase)}_temp` as any] as number) ?? 0}
+          onFocus={() => { focusedRef.current = true; }}
+          onBlur={() => { focusedRef.current = false; flushNow(); }}
+          onChange={(e) => { setLocal((p: any) => ({ ...p, [`${String(keyBase)}_temp`]: Number(e.target.value) })); scheduleFlush(); }}
         />
       </div>
     </div>
@@ -65,8 +103,10 @@ export default function CaratteristicheForm({
       <div className="space-y-1">
         <Label>Stile di Combattimento</Label>
         <Input
-          value={value.combatStyle}
-          onChange={(e) => onChange({ ...value, combatStyle: e.target.value })}
+          value={local.combatStyle}
+          onFocus={() => { focusedRef.current = true; }}
+          onBlur={() => { focusedRef.current = false; flushNow(); }}
+          onChange={(e) => { setLocal((p: any) => ({ ...p, combatStyle: e.target.value })); scheduleFlush(); }}
         />
       </div>
     </div>
