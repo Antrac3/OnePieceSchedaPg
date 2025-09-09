@@ -180,6 +180,7 @@ export default function AnagraficaForm({
     try {
       const fallbackRes = await fallbackUploadToServer(file).catch(() => null);
       if (fallbackRes && fallbackRes.publicUrl) {
+        setLocal((p: any) => ({ ...p, image_url: fallbackRes.publicUrl }));
         onChange({ ...value, image_url: fallbackRes.publicUrl });
         setUploading(false);
         return;
@@ -249,6 +250,7 @@ export default function AnagraficaForm({
           try {
             const fallbackRes = await fallbackUploadToServer(file);
             if (fallbackRes?.publicUrl) {
+              setLocal((p: any) => ({ ...p, image_url: fallbackRes.publicUrl }));
               onChange({ ...value, image_url: fallbackRes.publicUrl });
               setUploading(false);
               return;
@@ -297,7 +299,7 @@ export default function AnagraficaForm({
         const { data: pub } = supabase.storage
           .from("characters")
           .getPublicUrl(path);
-        if (pub?.publicUrl) onChange({ ...value, image_url: pub.publicUrl });
+        if (pub?.publicUrl) { setLocal((p: any) => ({ ...p, image_url: pub.publicUrl })); onChange({ ...value, image_url: pub.publicUrl }); }
       }
     } catch (e) {
       console.error("[AnagraficaForm] unexpected storage error:", e);
@@ -721,36 +723,46 @@ export default function AnagraficaForm({
       <div className="space-y-2">
         <Label>Sogno</Label>
         <Input
-          value={value.dream}
-          onChange={(e) => onChange({ ...value, dream: e.target.value })}
+          value={local.dream}
+          onFocus={() => { focusedRef.current = true; }}
+          onBlur={() => { focusedRef.current = false; flushNow(); }}
+          onChange={(e) => { setLocal((p: any) => ({ ...p, dream: e.target.value })); scheduleFlush(); }}
         />
       </div>
       <div className="space-y-2">
         <Label>Razza</Label>
         <Input
-          value={value.race}
-          onChange={(e) => onChange({ ...value, race: e.target.value })}
+          value={local.race}
+          onFocus={() => { focusedRef.current = true; }}
+          onBlur={() => { focusedRef.current = false; flushNow(); }}
+          onChange={(e) => { setLocal((p: any) => ({ ...p, race: e.target.value })); scheduleFlush(); }}
         />
       </div>
       <div className="space-y-2">
         <Label>Taglia</Label>
         <Input
-          value={value.size}
-          onChange={(e) => onChange({ ...value, size: e.target.value })}
+          value={local.size}
+          onFocus={() => { focusedRef.current = true; }}
+          onBlur={() => { focusedRef.current = false; flushNow(); }}
+          onChange={(e) => { setLocal((p: any) => ({ ...p, size: e.target.value })); scheduleFlush(); }}
         />
       </div>
       <div className="space-y-2">
         <Label>Ciurma</Label>
         <Input
-          value={value.crew}
-          onChange={(e) => onChange({ ...value, crew: e.target.value })}
+          value={local.crew}
+          onFocus={() => { focusedRef.current = true; }}
+          onBlur={() => { focusedRef.current = false; flushNow(); }}
+          onChange={(e) => { setLocal((p: any) => ({ ...p, crew: e.target.value })); scheduleFlush(); }}
         />
       </div>
       <div className="space-y-2 md:col-span-2">
         <Label>Aspetto</Label>
         <Textarea
-          value={value.appearance}
-          onChange={(e) => onChange({ ...value, appearance: e.target.value })}
+          value={local.appearance}
+          onFocus={() => { focusedRef.current = true; }}
+          onBlur={() => { focusedRef.current = false; flushNow(); }}
+          onChange={(e) => { setLocal((p: any) => ({ ...p, appearance: e.target.value })); scheduleFlush(); }}
           rows={3}
         />
       </div>
