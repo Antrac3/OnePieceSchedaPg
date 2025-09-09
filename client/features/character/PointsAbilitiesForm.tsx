@@ -56,7 +56,7 @@ export default function PointsAbilitiesForm({
     }
     flushTimerRef.current = window.setTimeout(() => {
       try {
-        onChange({ points: { ...(value || {}), ...localPoints } });
+        onChange({ points: { ...localPoints } });
       } catch (e) {
         // ignore
       }
@@ -69,7 +69,7 @@ export default function PointsAbilitiesForm({
       clearTimeout(flushTimerRef.current as any);
       flushTimerRef.current = null;
     }
-    onChange({ points: { ...(value || {}), ...localPoints } });
+    onChange({ points: { ...localPoints } });
   };
 
   // cleanup timer on unmount
