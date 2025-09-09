@@ -27,6 +27,58 @@ export default function PointsAbilitiesForm({
   const initRef = useRef(false);
   const lastSentRef = useRef<string | null>(null);
 
+  // Local debounced points state to avoid kitchen keyboard closing on mobile due to frequent re-renders
+  const [localPoints, setLocalPoints] = useState({
+    fatigue: Number(value.fatigue ?? 0),
+    shounen: Number(value.shounen ?? 0),
+    willpower: Number(value.willpower ?? 0),
+    morale: Number(value.morale ?? 0),
+    material: Number(value.material ?? 0),
+  });
+  const focusedRef = useRef(false);
+  const flushTimerRef = useRef<number | null>(null);
+
+  // Sync prop changes into localPoints only when inputs are not focused
+  useEffect(() => {
+    if (focusedRef.current) return;
+    setLocalPoints({
+      fatigue: Number(value.fatigue ?? 0),
+      shounen: Number(value.shounen ?? 0),
+      willpower: Number(value.willpower ?? 0),
+      morale: Number(value.morale ?? 0),
+      material: Number(value.material ?? 0),
+    });
+  }, [value.fatigue, value.shounen, value.willpower, value.morale, value.material]);
+
+  const scheduleFlush = () => {
+    if (flushTimerRef.current) {
+      clearTimeout(flushTimerRef.current as any);
+    }
+    flushTimerRef.current = window.setTimeout(() => {
+      try {
+        onChange({ points: { ...(value || {}), ...localPoints } });
+      } catch (e) {
+        // ignore
+      }
+      flushTimerRef.current = null;
+    }, 300);
+  };
+
+  const flushNow = () => {
+    if (flushTimerRef.current) {
+      clearTimeout(flushTimerRef.current as any);
+      flushTimerRef.current = null;
+    }
+    onChange({ points: { ...(value || {}), ...localPoints } });
+  };
+
+  // cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (flushTimerRef.current) clearTimeout(flushTimerRef.current as any);
+    };
+  }, []);
+
   // Initialize entries from props once on mount
   useEffect(() => {
     const buildFromAbilities = () => {
@@ -102,32 +154,40 @@ export default function PointsAbilitiesForm({
         <Label>Stanchezza</Label>
         <Input
           type="number"
-          value={value.fatigue}
-          onChange={(e) => onChange({ points: { ...value, fatigue: Number(e.target.value) } })}
+          value={localPoints.fatigue}
+          onFocus={() => { focusedRef.current = true; }}
+          onBlur={() => { focusedRef.current = false; flushNow(); }}
+          onChange={(e) => { setLocalPoints((p) => ({ ...p, fatigue: Number(e.target.value) })); scheduleFlush(); }}
         />
       </div>
       <div className="space-y-2">
         <Label>Shounen</Label>
         <Input
           type="number"
-          value={value.shounen}
-          onChange={(e) => onChange({ points: { ...value, shounen: Number(e.target.value) } })}
+          value={localPoints.shounen}
+          onFocus={() => { focusedRef.current = true; }}
+          onBlur={() => { focusedRef.current = false; flushNow(); }}
+          onChange={(e) => { setLocalPoints((p) => ({ ...p, shounen: Number(e.target.value) })); scheduleFlush(); }}
         />
       </div>
       <div className="space-y-2">
         <Label>Volontà</Label>
         <Input
           type="number"
-          value={value.willpower}
-          onChange={(e) => onChange({ points: { ...value, willpower: Number(e.target.value) } })}
+          value={localPoints.willpower}
+          onFocus={() => { focusedRef.current = true; }}
+          onBlur={() => { focusedRef.current = false; flushNow(); }}
+          onChange={(e) => { setLocalPoints((p) => ({ ...p, willpower: Number(e.target.value) })); scheduleFlush(); }}
         />
       </div>
       <div className="space-y-2">
         <Label>Morale</Label>
         <Input
           type="number"
-          value={value.morale}
-          onChange={(e) => onChange({ points: { ...value, morale: Number(e.target.value) } })}
+          value={localPoints.morale}
+          onFocus={() => { focusedRef.current = true; }}
+          onBlur={() => { focusedRef.current = false; flushNow(); }}
+          onChange={(e) => { setLocalPoints((p) => ({ ...p, morale: Number(e.target.value) })); scheduleFlush(); }}
         />
       </div>
 
@@ -135,8 +195,10 @@ export default function PointsAbilitiesForm({
         <Label>Punti Materiale</Label>
         <Input
           type="number"
-          value={value.material}
-          onChange={(e) => onChange({ points: { ...value, material: Number(e.target.value) } })}
+          value={localPoints.material}
+          onFocus={() => { focusedRef.current = true; }}
+          onBlur={() => { focusedRef.current = false; flushNow(); }}
+          onChange={(e) => { setLocalPoints((p) => ({ ...p, material: Number(e.target.value) })); scheduleFlush(); }}
         />
       </div>
 
