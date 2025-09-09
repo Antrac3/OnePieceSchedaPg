@@ -389,9 +389,9 @@ export default function AnagraficaForm({
   };
 
   const updateHealth = (updates: Record<string, any>) => {
-    const currentLevel = (value.status && value.status.level) || 1;
+    const currentLevel = (local.status && local.status.level) || 1;
     // If updates contains total_damage, distribute into per-level hp_dmg_l*
-    let merged = { ...(value.health || {}), ...updates };
+    let merged = { ...(local.health || {}), ...updates };
     if (Object.prototype.hasOwnProperty.call(updates, "total_damage")) {
       const distributed = distributeDamageAcrossLevels(
         Number(updates.total_damage || 0),
@@ -410,7 +410,7 @@ export default function AnagraficaForm({
     );
 
     // Apply temporary malus when woundedLevel >= 4: -1 AGI, -1 RES
-    const existingChars = value.characteristics || {};
+    const existingChars = local.characteristics || {};
     const agiTempKey = "AGI_temp";
     const resTempKey = "RES_temp";
     const shouldApply = woundedLevel >= 4;
@@ -420,11 +420,8 @@ export default function AnagraficaForm({
       [resTempKey]: shouldApply ? -1 : 0,
     };
 
-    onChange({
-      ...value,
-      health: computed,
-      characteristics: newCharacteristics,
-    });
+    setLocal((p: any) => ({ ...p, health: computed, characteristics: newCharacteristics }));
+    scheduleFlush();
   };
 
   return (
@@ -639,7 +636,7 @@ export default function AnagraficaForm({
       <div className="md:col-span-2 space-y-2">
         <Label>Amicizia & Affinità</Label>
         <div className="space-y-2">
-          {(value.affinities || []).map((a: any, idx: number) => (
+          {(local.affinities || []).map((a: any, idx: number) => (
             <div key={idx} className="flex items-center gap-2">
               <Input
                 placeholder="Nome PG"
