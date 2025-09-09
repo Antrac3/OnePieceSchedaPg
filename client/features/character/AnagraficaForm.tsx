@@ -2,7 +2,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { getSupabase, isSupabaseConfigured } from "@/lib/supabase";
 const supabase = getSupabase();
 
@@ -17,6 +17,43 @@ export default function AnagraficaForm({
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+
+  // Local debounced form state to avoid mobile keyboard losing focus due to parent re-renders
+  const [local, setLocal] = useState<any>(value || {});
+  const focusedRef = useRef(false);
+  const flushTimerRef = useRef<number | null>(null);
+
+  // Sync incoming prop changes into local when not focused
+  useEffect(() => {
+    if (focusedRef.current) return;
+    setLocal(value || {});
+  }, [value]);
+
+  const scheduleFlush = () => {
+    if (flushTimerRef.current) clearTimeout(flushTimerRef.current as any);
+    flushTimerRef.current = window.setTimeout(() => {
+      try {
+        onChange(local);
+      } catch (e) {
+        // ignore
+      }
+      flushTimerRef.current = null;
+    }, 300);
+  };
+
+  const flushNow = () => {
+    if (flushTimerRef.current) {
+      clearTimeout(flushTimerRef.current as any);
+      flushTimerRef.current = null;
+    }
+    onChange(local);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (flushTimerRef.current) clearTimeout(flushTimerRef.current as any);
+    };
+  }, []);
 
   const onFileChange = async (file: File) => {
     if (!file || !isSupabaseConfigured() || !userId) return;
@@ -393,22 +430,28 @@ export default function AnagraficaForm({
       <div className="space-y-2">
         <Label>Nome</Label>
         <Input
-          value={value.name}
-          onChange={(e) => onChange({ ...value, name: e.target.value })}
+          value={local.name}
+          onFocus={() => { focusedRef.current = true; }}
+          onBlur={() => { focusedRef.current = false; flushNow(); }}
+          onChange={(e) => { setLocal((p: any) => ({ ...p, name: e.target.value })); scheduleFlush(); }}
         />
       </div>
       <div className="space-y-2">
         <Label>Mestiere</Label>
         <Input
-          value={value.job}
-          onChange={(e) => onChange({ ...value, job: e.target.value })}
+          value={local.job}
+          onFocus={() => { focusedRef.current = true; }}
+          onBlur={() => { focusedRef.current = false; flushNow(); }}
+          onChange={(e) => { setLocal((p: any) => ({ ...p, job: e.target.value })); scheduleFlush(); }}
         />
       </div>
       <div className="space-y-2 md:col-span-2">
         <Label>Background</Label>
         <Textarea
-          value={value.background}
-          onChange={(e) => onChange({ ...value, background: e.target.value })}
+          value={local.background}
+          onFocus={() => { focusedRef.current = true; }}
+          onBlur={() => { focusedRef.current = false; flushNow(); }}
+          onChange={(e) => { setLocal((p: any) => ({ ...p, background: e.target.value })); scheduleFlush(); }}
           rows={3}
         />
       </div>
@@ -461,15 +504,13 @@ export default function AnagraficaForm({
                     <Input
                       type="number"
                       value={
-                        (value.health &&
-                          (value.health[`hp_bonus_l${idx + 1}`] ?? 0)) ??
+                        (local.health &&
+                          (local.health[`hp_bonus_l${idx + 1}`] ?? 0)) ??
                         0
                       }
-                      onChange={(e) =>
-                        updateHealth({
-                          [`hp_bonus_l${idx + 1}`]: Number(e.target.value),
-                        })
-                      }
+                      onFocus={() => { focusedRef.current = true; }}
+                      onBlur={() => { focusedRef.current = false; flushNow(); }}
+                      onChange={(e) => { setLocal((p: any) => ({ ...p, health: { ...(p.health || {}), [`hp_bonus_l${idx + 1}`]: Number(e.target.value) } })); scheduleFlush(); }}
                     />
                   </div>
 
@@ -477,15 +518,13 @@ export default function AnagraficaForm({
                     <Input
                       type="number"
                       value={
-                        (value.health &&
-                          (value.health[`hp_dmg_l${idx + 1}`] ?? 0)) ??
+                        (local.health &&
+                          (local.health[`hp_dmg_l${idx + 1}`] ?? 0)) ??
                         0
                       }
-                      onChange={(e) =>
-                        updateHealth({
-                          [`hp_dmg_l${idx + 1}`]: Number(e.target.value),
-                        })
-                      }
+                      onFocus={() => { focusedRef.current = true; }}
+                      onBlur={() => { focusedRef.current = false; flushNow(); }}
+                      onChange={(e) => { setLocal((p: any) => ({ ...p, health: { ...(p.health || {}), [`hp_dmg_l${idx + 1}`]: Number(e.target.value) } })); scheduleFlush(); }}
                     />
                   </div>
 
@@ -507,20 +546,20 @@ export default function AnagraficaForm({
                 <div className="space-y-2">
                   <div className="border-b py-2">
                     <Input
-                      value={(value.health && value.health.malus_notes) ?? ""}
-                      onChange={(e) =>
-                        updateHealth({ malus_notes: e.target.value })
-                      }
+                      value={(local.health && local.health.malus_notes) ?? ""}
+                      onFocus={() => { focusedRef.current = true; }}
+                      onBlur={() => { focusedRef.current = false; flushNow(); }}
+                      onChange={(e) => { setLocal((p: any) => ({ ...p, health: { ...(p.health || {}), malus_notes: e.target.value } })); scheduleFlush(); }}
                     />
                   </div>
                   <div className="border-b py-2">
                     <Label className="text-xs">Danni subiti totali</Label>
                     <Input
                       type="number"
-                      value={(value.health && value.health.total_damage) ?? 0}
-                      onChange={(e) =>
-                        updateHealth({ total_damage: Number(e.target.value) })
-                      }
+                      value={(local.health && local.health.total_damage) ?? 0}
+                      onFocus={() => { focusedRef.current = true; }}
+                      onBlur={() => { focusedRef.current = false; flushNow(); }}
+                      onChange={(e) => { setLocal((p: any) => ({ ...p, health: { ...(p.health || {}), total_damage: Number(e.target.value) } })); scheduleFlush(); }}
                     />
                   </div>
                   <div className="border-b py-2">
@@ -570,44 +609,26 @@ export default function AnagraficaForm({
           <Input
             type="number"
             placeholder="movement"
-            value={value.modifiers?.movement ?? 0}
-            onChange={(e) =>
-              onChange({
-                ...value,
-                modifiers: {
-                  ...(value.modifiers || {}),
-                  movement: Number(e.target.value),
-                },
-              })
-            }
+            value={local.modifiers?.movement ?? 0}
+            onFocus={() => { focusedRef.current = true; }}
+            onBlur={() => { focusedRef.current = false; flushNow(); }}
+            onChange={(e) => { setLocal((p: any) => ({ ...p, modifiers: { ...(p.modifiers || {}), movement: Number(e.target.value) } })); scheduleFlush(); }}
           />
           <Input
             type="number"
             placeholder="AGI"
-            value={value.modifiers?.AGI ?? 0}
-            onChange={(e) =>
-              onChange({
-                ...value,
-                modifiers: {
-                  ...(value.modifiers || {}),
-                  AGI: Number(e.target.value),
-                },
-              })
-            }
+            value={local.modifiers?.AGI ?? 0}
+            onFocus={() => { focusedRef.current = true; }}
+            onBlur={() => { focusedRef.current = false; flushNow(); }}
+            onChange={(e) => { setLocal((p: any) => ({ ...p, modifiers: { ...(p.modifiers || {}), AGI: Number(e.target.value) } })); scheduleFlush(); }}
           />
           <Input
             type="number"
             placeholder="RES"
-            value={value.modifiers?.RES ?? 0}
-            onChange={(e) =>
-              onChange({
-                ...value,
-                modifiers: {
-                  ...(value.modifiers || {}),
-                  RES: Number(e.target.value),
-                },
-              })
-            }
+            value={local.modifiers?.RES ?? 0}
+            onFocus={() => { focusedRef.current = true; }}
+            onBlur={() => { focusedRef.current = false; flushNow(); }}
+            onChange={(e) => { setLocal((p: any) => ({ ...p, modifiers: { ...(p.modifiers || {}), RES: Number(e.target.value) } })); scheduleFlush(); }}
           />
         </div>
       </div>
@@ -620,11 +641,14 @@ export default function AnagraficaForm({
             <div key={idx} className="flex items-center gap-2">
               <Input
                 placeholder="Nome PG"
-                value={a.name || ""}
+                value={local.affinities?.[idx]?.name || ""}
+                onFocus={() => { focusedRef.current = true; }}
+                onBlur={() => { focusedRef.current = false; flushNow(); }}
                 onChange={(e) => {
-                  const next = [...(value.affinities || [])];
+                  const next = [...(local.affinities || [])];
                   next[idx] = { ...(next[idx] || {}), name: e.target.value };
-                  onChange({ ...value, affinities: next });
+                  setLocal((p: any) => ({ ...p, affinities: next }));
+                  scheduleFlush();
                 }}
               />
 
@@ -632,9 +656,10 @@ export default function AnagraficaForm({
                 <Button
                   size="sm"
                   onClick={() => {
-                    const next = [...(value.affinities || [])];
+                    const next = [...(local.affinities || [])];
                     next[idx] = { ...(next[idx] || {}), value: (Number(next[idx]?.value) || 0) - 1 };
-                    onChange({ ...value, affinities: next });
+                    setLocal((p: any) => ({ ...p, affinities: next }));
+                    scheduleFlush();
                   }}
                 >
                   -
@@ -642,20 +667,24 @@ export default function AnagraficaForm({
                 <Input
                   type="number"
                   className="w-20 text-center"
-                  value={Number(a.value || 0)}
+                  value={Number(local.affinities?.[idx]?.value || 0)}
+                  onFocus={() => { focusedRef.current = true; }}
+                  onBlur={() => { focusedRef.current = false; flushNow(); }}
                   onChange={(e) => {
                     const v = Number(e.target.value || 0);
-                    const next = [...(value.affinities || [])];
+                    const next = [...(local.affinities || [])];
                     next[idx] = { ...(next[idx] || {}), value: v };
-                    onChange({ ...value, affinities: next });
+                    setLocal((p: any) => ({ ...p, affinities: next }));
+                    scheduleFlush();
                   }}
                 />
                 <Button
                   size="sm"
                   onClick={() => {
-                    const next = [...(value.affinities || [])];
+                    const next = [...(local.affinities || [])];
                     next[idx] = { ...(next[idx] || {}), value: (Number(next[idx]?.value) || 0) + 1 };
-                    onChange({ ...value, affinities: next });
+                    setLocal((p: any) => ({ ...p, affinities: next }));
+                    scheduleFlush();
                   }}
                 >
                   +
@@ -666,9 +695,10 @@ export default function AnagraficaForm({
                 variant="ghost"
                 size="sm"
                 onClick={() => {
-                  const next = [...(value.affinities || [])];
+                  const next = [...(local.affinities || [])];
                   next.splice(idx, 1);
-                  onChange({ ...value, affinities: next });
+                  setLocal((p: any) => ({ ...p, affinities: next }));
+                  scheduleFlush();
                 }}
               >
                 Rimuovi
@@ -678,8 +708,9 @@ export default function AnagraficaForm({
 
           <Button
             onClick={() => {
-              const next = [...(value.affinities || []), { name: "", value: 0 }];
-              onChange({ ...value, affinities: next });
+              const next = [...(local.affinities || []), { name: "", value: 0 }];
+              setLocal((p: any) => ({ ...p, affinities: next }));
+              scheduleFlush();
             }}
           >
             Aggiungi amicizia
